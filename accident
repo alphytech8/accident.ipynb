@@ -1,0 +1,76 @@
+
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+import joblib
+
+# Load the dataset
+data = pd.read_csv('/content/accident_data.csv')
+
+# Display the first few rows and the columns of the dataset
+print("Dataset Columns:", data.columns.tolist())
+print(data.head())
+
+# Define the dependent variable (target) and independent variables (features)
+X = data.drop('Accident_Severity', axis=1)
+y = data['Accident_Severity']
+
+# Define initial categorical and numerical features
+categorical_features = ['Weather_Condition', 'Road_Condition', 'Vehicle_Type']
+numerical_features = ['Time_of_Day', 'Traffic_Volume', 'Driver_Age', 'Alcohol_Consumption']
+
+# Verify and filter out columns that do not exist in the dataset
+categorical_features = [feature for feature in categorical_features if feature in data.columns]
+numerical_features = [feature for feature in numerical_features if feature in data.columns]
+
+# Notify about missing columns
+missing_features = set(['Weather_Condition', 'Road_Condition', 'Vehicle_Type', 'Time_of_Day', 'Traffic_Volume', 'Driver_Age', 'Alcohol_Consumption']) - set(categorical_features + numerical_features)
+if missing_features:
+    print(f"Warning: The following features were not found in the dataset and will be ignored: {missing_features}")
+
+# Create a column transformer for preprocessing
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', 'passthrough', numerical_features),
+        ('cat', OneHotEncoder(), categorical_features)
+    ]
+)
+
+# Create a pipeline that first transforms the data then fits a linear regression model
+pipeline = Pipeline(steps=[
+    ('preprocessor', preprocessor),
+    ('regressor', LinearRegression())
+])
+
+# Split the dataset into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Fit the model on the training data
+pipeline.fit(X_train, y_train)
+
+# Save the model for future use
+joblib.dump(pipeline, '/content/accident_severity_model.pkl')
+
+# Example prediction using a hypothetical set of independent variables
+example_data = pd.DataFrame({
+    'Time_of_Day': [14],
+    'Traffic_Volume': [50],
+    'Driver_Age': [30],
+    'Alcohol_Consumption': [1],
+    'Weather_Condition': ['Rainy'],
+    'Road_Condition': ['Wet'],
+    'Vehicle_Type': ['SUV']
+})
+
+# Filter example data to include only columns available in the dataset
+example_data = example_data[[col for col in example_data.columns if col in X.columns]]
+
+# Predict the accident severity
+predicted_severity = pipeline.predict(example_data)
+print(f"Predicted Accident Severity: {predicted_severity[0]}")
+
+     
